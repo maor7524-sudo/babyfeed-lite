@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BabyFeed Lite</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" href="icons/icon-192.png">
+  <style>
+    :root{--bg:#f7f7fb;--card:#ffffff;--text:#111;--muted:#666;--accent:#4caf50;--border:#e7e7ef;}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
+    header{position:sticky;top:0;background:var(--card);padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;z-index:10}
+    header h1{font-size:18px;margin:0;flex:1}
+    header .badge{font-size:12px;color:#fff;background:var(--accent);padding:2px 8px;border-radius:999px}
+    main{max-width:920px;margin:0 auto;padding:16px}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px}
+    @media(min-width:940px){.grid{grid-template-columns:1fr 1fr}}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 1px 0 rgba(0,0,0,0.02);padding:14px}
+    .card h2{font-size:16px;margin:0 0 10px}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    input,select,textarea,button{width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;background:#fff;font-size:14px}
+    textarea{min-height:70px}
+    .row{display:flex;gap:8px}
+    .row>*{flex:1}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+    button.ghost{background:#fff}
+    .feed-item{display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px}
+    .feed-meta{font-size:12px;color:var(--muted)}
+    .pill{padding:2px 8px;border-radius:999px;background:#eaf6ec;color:#0a3d12;font-size:12px}
+    .stat{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--border)}
+    .stat:last-child{border-bottom:0}
+    .footer-note{font-size:12px;color:var(--muted);text-align:center;margin-top:8px}
+    .chipbar{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{border:1px solid var(--border);padding:6px 10px;border-radius:999px;background:#fff;cursor:pointer}
+    .chip[data-active="1"]{background:#eaf6ec;border-color:#cfead5}
+    .mini{font-size:12px}
+    .linklike{color:var(--accent);text-decoration:underline;cursor:pointer}
+    .danger{color:#b00020}
+    .countdown{font-variant-numeric:tabular-nums}
+    .settings small{color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>BabyFeed Lite</h1>
+    <span class="badge" id="todayCount">0 האכלות היום</span>
+  </header>
+
+  <main>
+    <div class="grid">
+      <section class="card settings">
+        <h2>הגדרות</h2>
+        <div class="row">
+          <div>
+            <label>שם התינוק/ת (אופציונלי)</label>
+            <input id="babyName" placeholder="לדוגמה: נועה">
+          </div>
+          <div>
+            <label>כמויות מהירות</label>
+            <input id="quickAmountsInput" placeholder="למשל: 60,90,120,150">
+            <small>מופרד בפסיקים</small>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>ברירת מחדל – סוג</label>
+            <select id="defaultType">
+              <option value="פורמולה">פורמולה</option>
+              <option value="שאוב">שאוב</option>
+              <option value="הנקה">הנקה</option>
+              <option value="מים">מים</option>
+              <option value="אחר">אחר</option>
+            </select>
+          </div>
+          <div>
+            <label>צליל התראה</label>
+            <select id="soundPref">
+              <option value="on">פעיל</option>
+              <option value="off">כבוי</option>
+            </select>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="primary" id="savePrefs">שמור הגדרות</button>
+          <button class="ghost" id="resetPrefs">איפוס</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>רישום האכלה</h2>
+        <div class="row">
+          <div>
+            <label>זמן</label>
+            <input type="datetime-local" id="timeInput">
+          </div>
+          <div>
+            <label>כמות (מ״ל)</label>
+            <input type="number" id="amountInput" min="0" step="10" placeholder="60">
+            <div class="chipbar mini" id="quickAmounts"></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>סוג</label>
+            <select id="typeInput">
+              <option value="פורמולה">פורמולה</option>
+              <option value="שאוב">שאוב</option>
+              <option value="הנקה">הנקה</option>
+              <option value="מים">מים</option>
+              <option value="אחר">אחר</option>
+            </select>
+          </div>
+          <div>
+            <label>צד (לאופציונלי)</label>
+            <select id="sideInput">
+              <option value="">—</option>
+              <option value="שמאל">שמאל</option>
+              <option value="ימין">ימין</option>
+              <option value="שני הצדדים">שני הצדדים</option>
+            </select>
+          </div>
+        </div>
+
+        <label>הערות</label>
+        <textarea id="notesInput" placeholder="לדוגמה: נרדם אחרי 80 מ״ל..."></textarea>
+
+        <div class="actions">
+          <button class="primary" id="saveBtn">שמור רישום</button>
+          <button class="ghost" id="clearFormBtn">נקה</button>
+        </div>
+        <div class="footer-note">המידע נשמר במכשיר שלך בלבד.</div>
+      </section>
+
+      <section class="card">
+        <h2>סטטיסטיקה יומית</h2>
+        <div class="stat"><span>סה״כ האכלות</span><strong id="statCount">0</strong></div>
+        <div class="stat"><span>סה״כ מ״ל</span><strong id="statTotalMl">0</strong></div>
+        <div class="stat"><span>ממוצע למנה</span><strong id="statAvg">0</strong></div>
+        <div class="stat"><span>ההאכלה האחרונה</span><strong id="lastFeed">—</strong></div>
+      </section>
+
+      <section class="card">
+        <h2>תזכורות</h2>
+        <div class="row">
+          <div>
+            <label>מרווח (שעות)</label>
+            <input type="number" id="intervalHours" min="1" step="0.5" value="3">
+          </div>
+          <div>
+            <label>מרווח (דקות)</label>
+            <input type="number" id="intervalMinutes" min="0" step="5" value="0">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>אנשים ישנים? מצב שקט</label>
+            <select id="quietMode">
+              <option value="off">כבוי</option>
+              <option value="22-07">22:00–07:00</option>
+              <option value="23-06">23:00–06:00</option>
+            </select>
+          </div>
+          <div>
+            <label>התראה באפליקציה</label>
+            <button id="enableNotifs">אפשר התראות</button>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="primary" id="startTimer">הפעל תזכורת</button>
+          <button class="ghost" id="stopTimer">עצור</button>
+          <button class="ghost" id="addIcs">הוסף לפעילות ביומן (.ics)</button>
+        </div>
+        <div class="mini">ההתרעה פועלת כשהאפליקציה פתוחה. ליומן: התזכורת תופיע גם ברקע.</div>
+        <div class="mini countdown">ההאכלה הבאה בעוד: <strong id="countdown">—</strong></div>
+      </section>
+
+      <section class="card">
+        <h2>היסטוריית האכלות</h2>
+        <div class="row">
+          <input id="dateFilter" type="date">
+          <button id="todayBtn">היום</button>
+          <button id="exportCsv">ייצוא CSV</button>
+          <button id="backupJson">גיבוי</button>
+          <label for="restoreJson" class="chip linklike" style="text-align:center">שחזור</label>
+          <input id="restoreJson" type="file" accept="application/json" style="display:none">
+        </div>
+        <div id="feedList"></div>
+      </section>
+    </div>
+    <p class="footer-note">טיפ: לחיצה ארוכה על רשומה לעריכה/מחיקה.</p>
+  </main>
+
+  <audio id="beep">
+    <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQgAAAAA" type="audio/wav">
+  </audio>
+
+  <script>
+    const KEY = 'babyfeed_entries_v2';
+    const PREF = 'babyfeed_prefs_v2';
+    const qs = s => document.querySelector(s);
+    const qsa = s => Array.from(document.querySelectorAll(s));
+
+    const load = () => JSON.parse(localStorage.getItem(KEY) || '[]');
+    const save = (arr) => localStorage.setItem(KEY, JSON.stringify(arr));
+    const loadPref = () => JSON.parse(localStorage.getItem(PREF) || '{"amounts":[60,90,120,150], "defaultType":"פורמולה"}');
+    const savePref = (o) => localStorage.setItem(PREF, JSON.stringify(o));
+
+    const babyName = qs('#babyName');
+    const quickAmountsInput = qs('#quickAmountsInput');
+    const defaultType = qs('#defaultType');
+    const soundPref = qs('#soundPref');
+
+    const timeInput = qs('#timeInput');
+    const amountInput = qs('#amountInput');
+    const typeInput = qs('#typeInput');
+    const sideInput = qs('#sideInput');
+    const notesInput = qs('#notesInput');
+    const saveBtn = qs('#saveBtn');
+    const clearFormBtn = qs('#clearFormBtn');
+    const feedList = qs('#feedList');
+    const dateFilter = qs('#dateFilter');
+    const todayBtn = qs('#todayBtn');
+    const statCount = qs('#statCount');
+    const statTotalMl = qs('#statTotalMl');
+    const statAvg = qs('#statAvg');
+    const lastFeed = qs('#lastFeed');
+    const todayCount = qs('#todayCount');
+    const exportCsv = qs('#exportCsv');
+    const backupJson = qs('#backupJson');
+    const restoreJson = qs('#restoreJson');
+    const quickAmounts = qs('#quickAmounts');
+
+    const intervalHours = qs('#intervalHours');
+    const intervalMinutes = qs('#intervalMinutes');
+    const quietMode = qs('#quietMode');
+    const enableNotifs = qs('#enableNotifs');
+    const startTimer = qs('#startTimer');
+    const stopTimer = qs('#stopTimer');
+    const addIcs = qs('#addIcs');
+    const countdown = qs('#countdown');
+    const beep = qs('#beep');
+
+    const isoNow = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,16); };
+    timeInput.value = isoNow();
+
+    function applyQuickAmounts(list){ quickAmounts.innerHTML=''; list.forEach(v=>{ const b=document.createElement('button'); b.className='chip'; b.textContent=v+' מ״ל'; b.addEventListener('click', ()=> amountInput.value=v); quickAmounts.appendChild(b); }); }
+
+    saveBtn.addEventListener('click', () => {
+      const entries = load();
+      const entry = { id: crypto.randomUUID(), time: new Date(timeInput.value).toISOString(), amount: Number(amountInput.value||0), type: typeInput.value, side: sideInput.value, notes: notesInput.value.trim() };
+      if (!entry.time) return alert('אנא בחרי/בחרי זמן.');
+      entries.push(entry); save(entries); render(); clearForm(); tickNextFrom(entry.time); tryNotify('נרשמה האכלה', `${entry.amount || '-'} מ״ל • ${entry.type}`);
+    });
+
+    function clearForm(){ timeInput.value = isoNow(); amountInput.value=''; typeInput.value = (loadPref().defaultType||'פורמולה'); sideInput.value=''; notesInput.value=''; }
+
+    function render(){
+      const prefs = loadPref();
+      // quick amounts
+      applyQuickAmounts((prefs.amounts||[60,90,120,150]));
+      // list & stats
+      const entries = load().sort((a,b)=> new Date(b.time)-new Date(a.time));
+      const day = dateFilter.value ? new Date(dateFilter.value) : new Date();
+      const dayStr = new Date(day.getTime() - day.getTimezoneOffset()*60000).toISOString().slice(0,10);
+      const filtered = entries.filter(e => e.time.slice(0,10) === dayStr);
+      feedList.innerHTML = '';
+      filtered.forEach(e => {
+        const div = document.createElement('div'); div.className='feed-item';
+        const t = new Date(e.time); const hh = String(t.getHours()).padStart(2,'0'); const mm = String(t.getMinutes()).padStart(2,'0');
+        div.innerHTML = `
+          <div>
+            <div><strong>${hh}:${mm}</strong> • <span class="pill">${e.amount || '-'} מ״ל</span> • ${e.type}</div>
+            <div class="feed-meta">${e.side || ''} ${e.notes ? '• '+e.notes : ''}</div>
+          </div>
+          <button class="ghost mini">⋯</button>`;
+        const menuBtn = div.querySelector('button');
+        menuBtn.addEventListener('click', () => showEntryMenu(e));
+        div.addEventListener('contextmenu', (ev) => {ev.preventDefault(); showEntryMenu(e);});
+        feedList.appendChild(div);
+      });
+      const total = filtered.reduce((s,e)=> s + (e.amount||0), 0); const count = filtered.length;
+      statCount.textContent = count; statTotalMl.textContent = total; statAvg.textContent = count ? Math.round(total/count) : 0;
+      todayCount.textContent = count + ' האכלות היום';
+      lastFeed.textContent = entries[0] ? new Date(entries[0].time).toLocaleString() : '—';
+    }
+
+    function showEntryMenu(e){
+      const pick = prompt('עריכה/מחיקה:\n1) ערוך כמות\n2) מחק', '1'); if (!pick) return;
+      if (pick==='1'){
+        const nv = prompt('כמות חדשה במ״ל', e.amount); if (nv===null) return;
+        const entries = load(); const idx = entries.findIndex(x=>x.id===e.id);
+        if (idx>-1){ entries[idx].amount = Number(nv)||0; save(entries); render(); }
+      } else if (pick==='2'){
+        if (confirm('למחוק את הרשומה?')){ const entries = load().filter(x=>x.id!==e.id); save(entries); render(); }
+      }
+    }
+
+    todayBtn.addEventListener('click', () => { dateFilter.value = new Date().toISOString().slice(0,10); render(); });
+    dateFilter.value = new Date().toISOString().slice(0,10);
+
+    // Export CSV
+    exportCsv.addEventListener('click', () => {
+      const entries = load().sort((a,b)=> new Date(a.time)-new Date(b.time));
+      const rows = [['time','amount_ml','type','side','notes']].concat(entries.map(e => [e.time, e.amount, e.type, e.side, e.notes]));
+      const csv = rows.map(r => r.map(x => typeof x==='string' && x.includes(',') ? '"'+x.replaceAll('"','""')+'"' : x).join(',')).join('\n');
+      downloadFile('babyfeed_export.csv', 'text/csv', csv);
+    });
+
+    // Backup/restore
+    backupJson.addEventListener('click', () => downloadFile('babyfeed_backup.json', 'application/json', JSON.stringify(load(), null, 2)));
+    restoreJson.addEventListener('change', async ev => { const file = ev.target.files[0]; if (!file) return; const txt = await file.text();
+      try{ const arr = JSON.parse(txt); if (Array.isArray(arr)){ save(arr); render(); alert('שוחזר בהצלחה'); } }
+      catch(e){ alert('קובץ לא תקין'); }
+      ev.target.value = '';
+    });
+
+    function downloadFile(name, type, content){ const blob = new Blob([content], {type}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href); }
+
+    // Notifications (foreground)
+    enableNotifs.addEventListener('click', async () => { try{ const res = await Notification.requestPermission(); alert(res==='granted' ? 'התראות הופעלו' : 'לא ניתן להפעיל התראות'); } catch { alert('הדפדפן לא תומך בהתראות'); } });
+
+    let timerId = null;
+    startTimer.addEventListener('click', () => { const prefs = loadPref(); prefs.intervalH = Number(intervalHours.value)||0; prefs.intervalM = Number(intervalMinutes.value)||0; prefs.quiet = quietMode.value; savePref(prefs); scheduleFromLast(); });
+    stopTimer.addEventListener('click', () => { if (timerId) clearTimeout(timerId); timerId=null; countdown.textContent='—'; });
+
+    function scheduleFromLast(){ const entries = load().sort((a,b)=> new Date(b.time)-new Date(a.time)); const last = entries[0]?.time || new Date().toISOString(); tickNextFrom(last); }
+    function quietNow(range){ if (!range || range==='off') return false; const [from,to]=range.split('-').map(s=>Number(s)); const now=new Date(); const h=now.getHours(); if (from<to) return h>=from && h<to; else return h>=from || h<to; }
+
+    function tickNextFrom(lastIso){
+      if (timerId) clearTimeout(timerId);
+      const prefs = loadPref(); const h=Number(prefs.intervalH||intervalHours.value||0); const m=Number(prefs.intervalM||intervalMinutes.value||0);
+      const next = new Date(new Date(lastIso).getTime() + (h*60 + m)*60*1000);
+      updateCountdown(next);
+      const wait = Math.max(0, next - new Date());
+      timerId = setTimeout(()=>{ if (!quietNow(prefs.quiet)){ if ((loadPref().soundPref||'on')==='on') tryBeep(); tryNotify('הגיע הזמן לאכול','ההאכלה הבאה מתוזמנת עכשיו'); } tickNextFrom(new Date().toISOString()); }, wait);
+    }
+
+    function tryBeep(){ try{ beep.currentTime=0; beep.play(); }catch(e){} }
+    function updateCountdown(target){ function fmt(ms){ if (ms<=0) return '00:00:00'; const s=Math.floor(ms/1000); const hh=String(Math.floor(s/3600)).padStart(2,'0'); const mm=String(Math.floor((s%3600)/60)).padStart(2,'0'); const ss=String(s%60).padStart(2,'0'); return `${hh}:${mm}:${ss}`; } const tick=()=>{ countdown.textContent = fmt(target - new Date()); req=requestAnimationFrame(tick); }; let req=requestAnimationFrame(tick); }
+    async function tryNotify(title, body){ if (Notification?.permission==='granted'){ try{ new Notification(title, {body}); }catch(e){} } }
+
+    // ICS
+    const addIcsDt = d => { const pad = n => String(n).padStart(2,'0'); const yyyy=d.getFullYear(); const mm=pad(d.getMonth()+1); const dd=pad(d.getDate()); const hh=pad(d.getHours()); const mi=pad(d.getMinutes()); const ss=pad(d.getSeconds()); const tz=-d.getTimezoneOffset(); const sign=tz>=0?'+':'-'; const tzh=pad(Math.floor(Math.abs(tz)/60)); const tzm=pad(Math.abs(tz)%60); return `${yyyy}${mm}${dd}T${hh}${mi}${ss}${sign}${tzh}${tzm}`; };
+    addIcs.addEventListener('click', () => { const prefs=loadPref(); const h=Number(prefs.intervalH||intervalHours.value||0); const m=Number(prefs.intervalM||intervalMinutes.value||0); const entries=load().sort((a,b)=> new Date(b.time)-new Date(a.time)); const last=entries[0]?.time || new Date().toISOString(); const next=new Date(new Date(last).getTime() + (h*60 + m)*60*1000);
+      const uid=crypto.randomUUID(); const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//BabyFeed Lite//app//HE','BEGIN:VEVENT','UID:'+uid,'DTSTAMP:'+addIcsDt(new Date()),'DTSTART:'+addIcsDt(next),'DURATION:PT10M','SUMMARY:הגיע הזמן להאכלה','DESCRIPTION:תזכורת להאכלה הבאה.','END:VEVENT','END:VCALENDAR'].join('\r\n');
+      const blob=new Blob([ics],{type:'text/calendar'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='next_feed.ics'; a.click(); URL.revokeObjectURL(a.href);
+    });
+
+    // Prefs UI
+    document.getElementById('savePrefs').addEventListener('click', ()=>{ const p=loadPref(); p.babyName=babyName.value.trim(); p.defaultType=defaultType.value; p.soundPref=soundPref.value; p.amounts=(quickAmountsInput.value||'').split(',').map(s=>Number(s.trim())).filter(Boolean); localStorage.setItem(PREF, JSON.stringify(p)); render(); alert('הגדרות נשמרו'); });
+    document.getElementById('resetPrefs').addEventListener('click', ()=>{ localStorage.removeItem(PREF); render(); alert('הוגדר לברירת מחדל'); });
+
+    (async function init(){
+      const prefs = loadPref();
+      babyName.value = prefs.babyName || '';
+      defaultType.value = prefs.defaultType || 'פורמולה';
+      soundPref.value = prefs.soundPref || 'on';
+      quickAmountsInput.value = (prefs.amounts || [60,90,120,150]).join(',');
+      if ('serviceWorker' in navigator){ try{ await navigator.serviceWorker.register('sw.js'); }catch(e){} }
+      render();
+    })();
+  </script>
+</body>
+</html>
